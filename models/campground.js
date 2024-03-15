@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const Review = require('./review')
+const User = require('./user')
 const Schema = mongoose.Schema;     //use mongoose.Schema.Types.xxxx for many times, short everything slightly
 
 //creates a new Mongoose Schema named CampgroundSchema
@@ -10,6 +11,10 @@ const CampgroundSchema = new Schema({    //== new mongoose.Schema({})
     price: Number,
     description: String,
     location: String,
+    author: {
+        type: Schema.Types.ObjectId,
+        ref: 'User'
+    },
     // associate the campgrounds with the reviews
     reviews: [
         {

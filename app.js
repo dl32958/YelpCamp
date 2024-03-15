@@ -66,6 +66,7 @@ passport.deserializeUser(User.deserializeUser());         // tell passport how t
 
 // set up flash middleware
 app.use((req, res, next) => {
+    res.locals.currentUser = req.user;        
     res.locals.success = req.flash('success');     //res.flash() 用于在请求之间传递临时消息,它从请求对象中获取名为 'success' 的 Flash 消息
     res.locals.error = req.flash('error');
     next();

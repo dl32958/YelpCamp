@@ -2,9 +2,9 @@
 const Joi = require('joi');
 
 module.exports.campgroundSchema = Joi.object({
-    //not same as a schema model in mongoose, just a validation schema we use before we insert or update the data
-    //campground is an object, and it has title, price, image, description, location
-    //.object is type, .required() is required
+    // not same as a schema model in mongoose, just a validation schema we use before we insert or update the data
+    // campground is an object, and it has title, price, image, description, location
+    // .object is type, .required() is required
     campground: Joi.object({
         title: Joi.string().required(),
         price: Joi.number().required().min(0),
