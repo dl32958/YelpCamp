@@ -1,10 +1,12 @@
 <% layout('layouts/boilerplate') %>
+<link rel="stylesheet" href="/stylesheets/new-form-file.css">
+
 <div class="row">
     <h1 class="text-center">New Campground</h1>
-    <div class="col-6 offset-3">
+    <div class="col-md-6 offset-md-3">
         <!-- action: 指定表单提交数据时要发送到的目标 URL -->
         <!-- novalidate: 禁用浏览器的默认验证 -->
-        <form action="/campgrounds" method="POST" novalidate class="validated-form">
+        <form action="/campgrounds" method="POST" novalidate class="validated-form" enctype="multipart/form-data">
             <div class="mb-3">
                 <label class="form-label" for="title">Title</label>
                 <!-- if I have multiple Campground[](title, location, etc) When our data is sent via post request to our express app to the server, everything in the request out body will be stored under campground. -->
@@ -20,14 +22,13 @@
                     Looks good!
                 </div>
             </div>
-            <div class="mb-3">
+            <!-- <div class="mb-3">
                 <label class="form-label" for="image">Image URL</label>
                 <input class="form-control" type="text" id="image" name="campground[image]" required>
                 <div class="valid-feedback">
                     Looks good!
                 </div>
-            </div>
-
+            </div> -->
             <div class="mb-3">
                 <label class="form-label" for="price">Campground Price</label>
                 <div class="input-group">
@@ -45,6 +46,12 @@
                 <textarea class="form-control" type="text" id="description" name="campground[description]" required></textarea>
                 <div class="valid-feedback">
                     Looks good!
+                </div>
+            </div>
+            <div class="mb-3">
+                <div class="input-group custom-file-button">
+                    <label for="image" class="form-label"></label>
+                    <input class="form-control" type="file" id="image" name="image" multiple>
                 </div>
             </div>
             <div class="mb-3">

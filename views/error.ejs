@@ -3,7 +3,10 @@
     <div class="col-6 offset-3">
         <div class="alert alert-danger" role="alert">
             <h4 class="alert-heading"><%= err.message %></h4>
+            <!-- don't display the error stack outside of development -->
+            <% if (process.env.NODE_ENV !== "production") {%>
             <p><%= err.stack %></p>
+            <% } %>
         </div>
     </div>
 </div>

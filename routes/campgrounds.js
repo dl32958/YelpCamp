@@ -6,82 +6,54 @@ const catchAsync = require('../utils/catchAsync.js');
 const { validateCampground } = require('../middleware.js');
 const { isAuthor } = require('../middleware.js');
 const { isLoggedIn } = require('../middleware.js');
+// import controllers
+const campgrounds = require('../controllers/campgrounds.js');
 
-const Campground = require('../models/campground.js');
+const multer  = require('multer');
+const { storage } = require('../cloudinary');                 // node automatically looks for index.js file
+const upload = multer({ storage });
+
+
+// use router.route() to chain the routes together
+router.route('/')
+    .get(catchAsync(campgrounds.index))
+    .post(isLoggedIn, upload.array('image'), validateCampground, catchAsync(campgrounds.createCampground))
 
 
 
-router.get('/', catchAsync(async (req, res) => {
-    const campgrounds = await Campground.find({});      //find all campgrounds
-    res.render('campgrounds/index', { campgrounds })    //render index.ejs
-}));
+router.get('/new', isLoggedIn, campgrounds.renderNewForm);
 
-// new campground page
+router.route('/:id')
+    .get(catchAsync(campgrounds.showCampground))
+    .put(isLoggedIn, isAuthor, upload.array('image'), validateCampground, catchAsync(campgrounds.updateCampground))
+    .delete(isLoggedIn, isAuthor, catchAsync(campgrounds.deleteCampground))
+
+router.get('/:id/edit', isLoggedIn, isAuthor, catchAsync(campgrounds.renderEditForm));
+
+
+// router.get('/', catchAsync(campgrounds.index));
+
+// new campground page - display the form
 // have to put this route before /campgrounds/:id, because :id will match anything
-router.get('/new', isLoggedIn, (req, res) => {
-    res.render('campgrounds/new');
-});
+// router.get('/new', isLoggedIn, campgrounds.renderNewForm);
 
-// make a new campground (using post request)
+// create a new campground (using post request)
 // 用catchAsync包装async函数，以便在出现错误时捕获错误
 // use isLoggedIn here to protect the route, that send from Postman or other API tools
-router.post('/', isLoggedIn, validateCampground, catchAsync(async (req, res, next) => {
-    // basic validation
-    // if (!req.body.campground) throw new ExpressError('Invalid Campground Data', 400);
-    const campground = new Campground(req.body.campground);       //campground[title] - get the inside of []
-    campground.author = req.user._id;
-    await campground.save();                                      //save to the database
-    req.flash('success', 'Successfully made a new campground!')
-    res.redirect(`/campgrounds/${campground._id}`)                //redirect to the show page
-}));
-
+// router.post('/', isLoggedIn, validateCampground, catchAsync(campgrounds.createCampground));
 
 // show page - display a single campground
-router.get('/:id', catchAsync(async (req, res) => {
-    // nested populate, to populate reviews, camground author and review author
-    const campground = await Campground.findById(req.params.id).populate({
-        path: 'reviews',
-        populate: {
-            path: 'author'
-        }
-    }).populate('author');
-    // if campground is not exist, redirect to the campgrounds page
-    if (!campground) {
-        req.flash('error', 'Cannot find that campground!');
-        return res.redirect('/campgrounds');
-    }
-    res.render('campgrounds/show', { campground });
-}));
-
+// router.get('/:id', catchAsync(campgrounds.showCampground));
 
 // edit page - edit a campground
-router.get('/:id/edit', isLoggedIn, isAuthor, catchAsync(async (req, res) => {
-    const { id } = req.params;
-    const campground = await Campground.findById(id);
-    if (!campground) {
-        req.flash('error', 'Cannot find that campground!');
-        return res.redirect('/campgrounds');
-    }
-    res.render('campgrounds/edit', { campground });
-}));
+// router.get('/:id/edit', isLoggedIn, isAuthor, catchAsync(campgrounds.renderEditForm));
 
 // update a campground after editing
 // PUT 请求通常用于更新已存在的资源，例如更新数据库中的记录。PUT 请求的主体包含了要更新的资源的新状态。
-router.put('/:id', isLoggedIn, isAuthor, validateCampground, catchAsync(async (req, res) => {
-    const { id } = req.params;                        //structure of req.params is {id: 'xxxx'}
-    const campground = await Campground.findByIdAndUpdate(id, {...req.body.campground});        //... means to spread the object.扩展语法
-    req.flash('success', 'Successfully updated campground!');
-    res.redirect(`/campgrounds/${campground._id}`);
-}));
+// router.put('/:id', isLoggedIn, isAuthor, validateCampground, catchAsync(campgrounds.updateCampground));
 
 // delete page - delete a campground
-router.delete('/:id', isLoggedIn, isAuthor, catchAsync(async (req, res) => {
-    const { id } = req.params;
-    await Campground.findByIdAndDelete(id);
-    req.flash('success', 'Successfully deleted campground')
-    res.redirect('/campgrounds');
-}));
-// res.render(’ejs_file_name’, optional data object)
+// router.delete('/:id', isLoggedIn, isAuthor, catchAsync(campgrounds.deleteCampground));
 
 
 module.exports = router;

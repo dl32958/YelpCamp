@@ -3,11 +3,34 @@ const Review = require('./review')
 const User = require('./user')
 const Schema = mongoose.Schema;     //use mongoose.Schema.Types.xxxx for many times, short everything slightly
 
+// set up a virtual property thumbnail for the images
+const ImageSchema = new Schema({
+    url: String,
+    filename: String
+});
+ImageSchema.virtual('thumbnail').get(function () {
+    return this.url.replace('/upload', '/upload/w_200');
+});
+
+// mongoose cannot include virtuals when converting a document to JSON, so we need to set the toJSON option to true
+const opts = { toJSON: { virtuals: true } };  
 //creates a new Mongoose Schema named CampgroundSchema
 //定义 Campground 模型
 const CampgroundSchema = new Schema({    //== new mongoose.Schema({})
     title: String,
-    image: String,
+    // image will be an array, each has a url and a filename
+    images: [ImageSchema],
+    geometry: {
+        type: {
+            type: String,
+            enum: ['Point'],  // 'geometry.type' must be 'Point'
+            required: true
+        },
+        coordinates: {
+            type: [Number],
+            required: true
+        }
+    },
     price: Number,
     description: String,
     location: String,
@@ -19,9 +42,16 @@ const CampgroundSchema = new Schema({    //== new mongoose.Schema({})
     reviews: [
         {
             type: Schema.Types.ObjectId,
-            ref: 'Review'
+            ref: 'Review',
         }
     ]
+}, opts);
+
+CampgroundSchema.virtual('properties.popUpMarkup').get(function () {
+    return `
+        <strong><a href="/campgrounds/${this._id}">${this.title}</a><strong>
+        <p>${this.description.substring(0,20)}...</p>
+        `;
 });
 
 // when use findByIdAndDelete, it will trigger findOneAndDelete, and then delete the reviews associated with specific campground

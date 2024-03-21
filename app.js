@@ -1,3 +1,9 @@
+if (process.env.NODE_ENV !== "production") {
+    require('dotenv').config();
+};
+
+console.log(process.env.SECRET);
+
 const express = require('express');
 const path = require('path');
 const mongoose = require('mongoose');
@@ -8,22 +14,29 @@ const ExpressError = require('./utils/ExpressError');
 const methodOverride = require('method-override');    //method-override is a middleware that allows a POST request to be changed to a PUT or DELETE request. 实现客户端中并不支持的 HTTP 请求方法（例如 PUT、DELETE)
 const passport = require('passport');
 const LocalStrategy = require('passport-local');      //passport-local is a strategy for authenticating with a username and password
-
-
+const mongoSanitize = require('express-mongo-sanitize');
+const helmet = require('helmet');
 // refactoring the routes
 const userRoutes = require('./routes/users');
 const campgroundRoutes = require('./routes/campgrounds');
 const reviewRoutes = require('./routes/reviews');
 
+const MongoStore = require('connect-mongo');
+
 
 const User = require('./models/user');
 const { FORMERR } = require('dns');
 
-mongoose.connect('mongodb://127.0.0.1:27017/yelp-camp', {    //connect to the database yelp-camp
-    // useNewUrlParser: true,                                   //useCreateIndex is deprecated
-    // useUnifiedTopology: true,
+// use mongo altas to store the database, and connect to database
+const dbUrl = 'mongodb://127.0.0.1:27017/yelp-camp'
+// local database location is: 'mongodb://127.0.0.1:27017/yelp-camp'
+mongoose.connect(dbUrl, {
     // useCreateIndex: true,
+    // useNewUrlParser: true,
+    // useUnifiedTopology: true,
+    // useFindAndModift: false,
 });
+
 
 const app = express();
 
@@ -39,15 +52,36 @@ app.set('view engine', 'ejs');   //设置视图引擎为ejs
 app.set('views', path.join(__dirname, 'views'));  //设置视图文件夹路径为'views/'
 
 
+
 app.use(express.urlencoded({ extended: true }));            // express.urlencoded is a middleware,它的作用是将请求的数据解析为 JavaScript 对象，然后将解析后的对象附加到 req.body 上，便于在后续的路由处理程序中使用
 app.use(methodOverride('_method'));                         //use method-override
 app.use(express.static(path.join(__dirname, 'public')));    //save the static files like css, js, images in the public folder
+// use underscore to replace the dollar sign and dot in the query (injection attack)
+app.use(mongoSanitize({
+    replaceWith: '_'
+}));
+
+const secret = 'thisshouldbeabettersecret!';
+const store = MongoStore.create({
+    mongoUrl: dbUrl,
+    touchAdter: 24 * 60 * 60,
+    crypto: {
+        secret,
+    }
+})
+
+store.on("error", function (e) {
+    console.log("SESSION STORE ERROR", e)
+})
+// confugure session
 const sessionConfig = {
-    secret: 'thisshouldbeabettersecret!',
+    name: 'session',
+    secret,
     resave: false,
     saveUninitialized: true,
     cookie: {
         httpOnly: true,                                     //cookie is not accessible through client side script
+        // secure: true,
         expires: Date.now() + 1000 * 60 * 60 * 24 * 7,      //set the cookie to expire in a week (in milliseconds)
         maxAge: 1000 * 60 * 60 * 24 * 7,
     }
@@ -55,6 +89,51 @@ const sessionConfig = {
 app.use(session(sessionConfig));
 app.use(flash());
 
+// restrict locations that can fetch resources from our server
+app.use(helmet());
+const scriptSrcUrls = [
+    "https://stackpath.bootstrapcdn.com/",
+    "https://api.tiles.mapbox.com/",
+    "https://api.mapbox.com/",
+    "https://kit.fontawesome.com/",
+    "https://cdnjs.cloudflare.com/",
+    "https://cdn.jsdelivr.net",
+];
+const styleSrcUrls = [
+    "https://kit-free.fontawesome.com/",
+    "https://stackpath.bootstrapcdn.com/",
+    "https://api.mapbox.com/",
+    "https://api.tiles.mapbox.com/",
+    "https://fonts.googleapis.com/",
+    "https://use.fontawesome.com/",
+];
+const connectSrcUrls = [
+    "https://api.mapbox.com/",
+    "https://a.tiles.mapbox.com/",
+    "https://b.tiles.mapbox.com/",
+    "https://events.mapbox.com/",
+];
+const fontSrcUrls = [];
+app.use(
+    helmet.contentSecurityPolicy({
+        directives: {
+            defaultSrc: [],
+            connectSrc: ["'self'", ...connectSrcUrls],
+            scriptSrc: ["'unsafe-inline'", "'self'", ...scriptSrcUrls],
+            // styleSrc: ["'self'", "'unsafe-inline'", ...styleSrcUrls],
+            workerSrc: ["'self'", "blob:"],
+            objectSrc: [],
+            imgSrc: [
+                "'self'",
+                "blob:",
+                "data:",
+                "https://res.cloudinary.com/dvtqo8whc/", //SHOULD MATCH YOUR CLOUDINARY ACCOUNT! 
+                "https://images.unsplash.com/",
+            ],
+            fontSrc: ["'self'", ...fontSrcUrls],
+        },
+    })
+);
 
 app.use(passport.initialize());
 app.use(passport.session());                              // have to use after app.use(session());
@@ -66,6 +145,7 @@ passport.deserializeUser(User.deserializeUser());         // tell passport how t
 
 // set up flash middleware
 app.use((req, res, next) => {
+    console.log(req.query);
     res.locals.currentUser = req.user;        
     res.locals.success = req.flash('success');     //res.flash() 用于在请求之间传递临时消息,它从请求对象中获取名为 'success' 的 Flash 消息
     res.locals.error = req.flash('error');
