@@ -28,7 +28,7 @@ const User = require('./models/user');
 const { FORMERR } = require('dns');
 
 // use mongo altas to store the database, and connect to database
-const dbUrl = 'mongodb://127.0.0.1:27017/yelp-camp'
+const dbUrl = process.env.DB_URL || 'mongodb://127.0.0.1:27017/yelp-camp'
 // local database location is: 'mongodb://127.0.0.1:27017/yelp-camp'
 mongoose.connect(dbUrl, {
     // useCreateIndex: true,
@@ -61,7 +61,8 @@ app.use(mongoSanitize({
     replaceWith: '_'
 }));
 
-const secret = 'thisshouldbeabettersecret!';
+const secret = process.env.SECRET || 'thisshouldbeabettersecret!';
+
 const store = MongoStore.create({
     mongoUrl: dbUrl,
     touchAdter: 24 * 60 * 60,
@@ -181,6 +182,7 @@ app.use((err, req, res, next) => {
     //use render() to render the error page
     res.status(statusCode).render('error', { err });
 });    
+
 
 app.listen(3000, () => {
     console.log('Server is running on port 3000');
